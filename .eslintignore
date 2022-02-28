@@ -1,0 +1,7 @@
+src/**/generated
+build
+node_modules
+.eslintrc.js
+eslint-config-boundaries.js
+next.config.js
+jest.config.js
