@@ -1,0 +1,151 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`percentiles  1`] = `
+Object {
+  "percents": Array [
+    0,
+    25,
+    50,
+    90,
+    100,
+  ],
+  "result": Array [
+    3,
+    11,
+    15.5,
+    131.29999999999998,
+    152,
+  ],
+  "source": Array [
+    5,
+    3,
+    16,
+    64,
+    10,
+    127,
+    15,
+    14,
+    152,
+    129,
+  ],
+}
+`;
+
+exports[`percentiles  2`] = `
+Object {
+  "percents": Array [
+    0,
+    25,
+    50,
+    90,
+    100,
+  ],
+  "result": Array [
+    1,
+    23.5,
+    73,
+    2715,
+    12826,
+  ],
+  "source": Array [
+    12,
+    25,
+    73,
+    1,
+    39,
+    294,
+    234,
+    12826,
+    2715,
+    183,
+    22,
+  ],
+}
+`;
+
+exports[`percentiles  3`] = `
+Object {
+  "percents": Array [
+    0,
+    25,
+    50,
+    90,
+    100,
+  ],
+  "result": Array [],
+  "source": Array [],
+}
+`;
+
+exports[`percentiles  4`] = `
+Object {
+  "percents": Array [
+    0,
+    25,
+    50,
+    90,
+    100,
+  ],
+  "result": Array [
+    45,
+    45,
+    45,
+    45,
+    45,
+  ],
+  "source": Array [
+    45,
+  ],
+}
+`;
+
+exports[`percentiles  5`] = `
+Object {
+  "percents": Array [
+    0,
+    25,
+    50,
+    90,
+    100,
+  ],
+  "result": Array [
+    12,
+    32,
+    52,
+    84,
+    92,
+  ],
+  "source": Array [
+    92,
+    12,
+  ],
+}
+`;
+
+exports[`percentiles  6`] = `
+Object {
+  "percents": Array [],
+  "result": Array [],
+  "source": Array [
+    51,
+    20,
+    102,
+  ],
+}
+`;
+
+exports[`percentiles  7`] = `
+Object {
+  "percents": Array [
+    50,
+  ],
+  "result": Array [
+    1,
+  ],
+  "source": Array [
+    1,
+    -10,
+    20,
+  ],
+}
+`;

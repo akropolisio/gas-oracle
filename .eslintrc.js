@@ -1,6 +1,6 @@
 module.exports = {
   extends: [
-    'plugin:node/recommended',
+    'plugin:node/recommended-module',
     'airbnb-base',
     'airbnb-typescript/base',
     'plugin:prettier/recommended',
@@ -83,5 +83,7 @@ module.exports = {
     'no-undef': 'off',
     'consistent-return': 'off',
     'default-case': 'off',
+    'node/file-extension-in-import': 'off',
+    'node/no-missing-import': 'off',
   },
 };
