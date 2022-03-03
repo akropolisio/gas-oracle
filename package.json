@@ -12,14 +12,13 @@
   ],
   "main": "./build/index.js",
   "scripts": {
-    "build": "yarn clean && yarn lint && tsc -p tsconfig-build.json",
-    "start": "yarn build && pm2 start pm2.config.js",
-    "start:dev": "pm2 start pm2-dev.config.js --watch",
-    "stop": "pm2 stop pm2.config.js",
-    "stop:dev": "pm2 stop pm2-dev.config.js",
+    "build": "npm run clean && npm run lint && tsc -p tsconfig.json",
+    "start": "npm run build && pm2 start pm2.json",
+    "start:dev": "npm run start -- --watch && tsc -p tsconfig.json --watch",
+    "stop": "pm2 stop pm2.json",
     "lint": "eslint . --ext .js,.ts && tsc --noEmit --pretty",
     "lint:autofix": "eslint . --ext .js,.ts,.tsx --fix",
-    "test": "yarn lint && jest --config ./jest.config.js",
+    "test": "npm run lint && jest --config ./jest.config.js",
     "clean": "rm -rf build/*"
   },
   "repository": {

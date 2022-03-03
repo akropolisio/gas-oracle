@@ -12,7 +12,7 @@ export const ETHEREUM_JSON_RPC_URLS: Record<NetworkID, string> = {
 
 export const HISTORY_BLOCK_COUNT = 200;
 
-export const PERCENTILES = [10, 60, 90];
+export const PERCENTILES = [25, 60, 90];
 export const PERCENTILES_IN_BLOCKS = PERCENTILES.map(percentileToBlocks);
 
 export const AVERAGE_BLOCK_TIME: Record<NetworkID, number> = {

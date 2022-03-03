@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`percentiles  1`] = `
+exports[`percentiles should calculate percentiles with R-7 method 1`] = `
 Object {
   "percents": Array [
     0,
@@ -31,7 +31,7 @@ Object {
 }
 `;
 
-exports[`percentiles  2`] = `
+exports[`percentiles should calculate percentiles with R-7 method 2`] = `
 Object {
   "percents": Array [
     0,
@@ -63,7 +63,7 @@ Object {
 }
 `;
 
-exports[`percentiles  3`] = `
+exports[`percentiles should calculate percentiles with R-7 method 3`] = `
 Object {
   "percents": Array [
     0,
@@ -77,7 +77,7 @@ Object {
 }
 `;
 
-exports[`percentiles  4`] = `
+exports[`percentiles should calculate percentiles with R-7 method 4`] = `
 Object {
   "percents": Array [
     0,
@@ -99,7 +99,7 @@ Object {
 }
 `;
 
-exports[`percentiles  5`] = `
+exports[`percentiles should calculate percentiles with R-7 method 5`] = `
 Object {
   "percents": Array [
     0,
@@ -122,7 +122,7 @@ Object {
 }
 `;
 
-exports[`percentiles  6`] = `
+exports[`percentiles should calculate percentiles with R-7 method 6`] = `
 Object {
   "percents": Array [],
   "result": Array [],
@@ -134,7 +134,7 @@ Object {
 }
 `;
 
-exports[`percentiles  7`] = `
+exports[`percentiles should calculate percentiles with R-7 method 7`] = `
 Object {
   "percents": Array [
     50,

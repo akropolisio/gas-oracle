@@ -1,7 +1,7 @@
 import { percentiles } from '../utils/percentiles';
 
 describe('percentiles', () => {
-  it('', () => {
+  it('should calculate percentiles with R-7 method', () => {
     [
       {
         source: [5, 3, 16, 64, 10, 127, 15, 14, 152, 129],
