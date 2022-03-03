@@ -1,10 +1,17 @@
 import assert from 'assert';
+import cors from 'cors';
 import express from 'express';
 
+import { WHITELISTED_ORIGINS } from './constants';
 import { Oracle } from './services/Oracle';
 import { isSupportedNetworkID, NetworkID } from './types';
 
 const app = express();
+app.use(
+  cors({
+    origin: WHITELISTED_ORIGINS,
+  }),
+);
 
 const HOSTNAME = 'localhost';
 const args: { network: NetworkID; port: number } = {
@@ -24,14 +31,13 @@ process.argv.forEach((val, i, array) => {
 
 const oracle = new Oracle(args.network);
 
-app.get(`/gas/${args.network}`, async (_req, res) => {
+app.get(`/${args.network}`, async (_req, res) => {
   try {
     const value = await oracle.getGasParams();
-    res.send(value);
+    res.set('Cache-Control', 'public, max-age=15').send(value);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.debug(error);
-
     res.status(404).send({
       error: 'Not found',
       message: 'The network you requested is not available.',

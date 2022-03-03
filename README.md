@@ -55,7 +55,7 @@ pm2 logs
 For more commands see [pm2 docs](https://pm2.keymetrics.io/docs/usage/quick-start/).
 
 ## API
-The data can be fetched under `/gas/[networkID]` endpoint. The response contains a json with the following structure:
+The data can be fetched under `[networkID]` endpoint. The response contains a json with the following structure:
 ```
 type GasParams = Record<
   'slow' | 'standard' | 'fast',

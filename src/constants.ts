@@ -23,3 +23,10 @@ export const AVERAGE_BLOCK_TIME: Record<NetworkID, number> = {
   42161: 3 * 1000,
   421611: 3 * 1000,
 };
+
+export const WHITELISTED_ORIGINS = [
+  'https://www.akropolis.io',
+  'https://testnet.akropolis.io',
+  /^https:\/\/.+akropolisio\.vercel\.app$/,
+  'http://localhost:8083',
+];
