@@ -71,10 +71,10 @@ type GasParams = Record<
 >;
 ```
 - pendingBlock - pending block number at the time of the request;
-- gasPrice - suggested gasPrice in gwei;
+- gasPrice - suggested gasPrice in wei;
 - waitTime - milliseconds to wait before tx is added in a block;
 - percent - hardcoded values to calculate rewardPercentiles. Equal to `25` for slow speed, `60` for standard speed, and `90` for fast speed;
-- baseFeePerGas - baseFeePerGas for the pending block in gwei, `undefined` if EIP-1559 not supported;
-- maxPriorityFeePerGas - suggested maxPriorityFeePerGas in gwei, `undefined` if EIP-1559 not supported;
-- maxFeePerGas - suggested maxFeePerGas in gwei, `undefined` if EIP-1559 not supported. Equals to `2 * baseFeePerGas + maxPriorityFeePerGas`.
+- baseFeePerGas - baseFeePerGas for the pending block in wei, `undefined` if EIP-1559 not supported;
+- maxPriorityFeePerGas - suggested maxPriorityFeePerGas in wei, `undefined` if EIP-1559 not supported;
+- maxFeePerGas - suggested maxFeePerGas in wei, `undefined` if EIP-1559 not supported. Equals to `2 * baseFeePerGas + maxPriorityFeePerGas`.
 

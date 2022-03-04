@@ -21,24 +21,27 @@ export class Oracle {
     const gasParams = PERCENTILES.map((percent, i) => {
       const result = {
         pendingBlock: number,
+        percent,
+        waitTime: this.waitTime[i],
+      };
+
+      if (pendingBaseFeePerGas) {
+        const maxPriorityFeePerGas = median(
+          blockRecords.map(block => block.rewards[i]).filter(x => !!x),
+        );
+        return {
+          ...result,
+          maxPriorityFeePerGas,
+          baseFeePerGas: pendingBaseFeePerGas,
+          gasPrice: maxPriorityFeePerGas + pendingBaseFeePerGas,
+          maxFeePerGas: 2 * pendingBaseFeePerGas + maxPriorityFeePerGas,
+        };
+      }
+      return {
+        ...result,
         gasPrice: median(
           blockRecords.map(block => block.baseFeePerGas + block.rewards[i]).filter(x => !!x),
         ),
-        percent,
-        waitTime: this.waitTime[i],
-        baseFeePerGas: pendingBaseFeePerGas,
-      };
-      if (!pendingBaseFeePerGas) {
-        return result;
-      }
-
-      const maxPriorityFeePerGas = median(
-        blockRecords.map(block => block.rewards[i]).filter(x => !!x),
-      );
-      return {
-        ...result,
-        maxPriorityFeePerGas,
-        maxFeePerGas: 2 * pendingBaseFeePerGas + maxPriorityFeePerGas,
       };
     });
 
