@@ -26,8 +26,8 @@ export class Oracle {
       };
 
       if (pendingBaseFeePerGas) {
-        const maxPriorityFeePerGas = median(
-          blockRecords.map(block => block.rewards[i]).filter(x => !!x),
+        const maxPriorityFeePerGas = Math.round(
+          median(blockRecords.map(block => block.rewards[i]).filter(x => !!x)),
         );
         return {
           ...result,
@@ -39,8 +39,10 @@ export class Oracle {
       }
       return {
         ...result,
-        gasPrice: median(
-          blockRecords.map(block => block.baseFeePerGas + block.rewards[i]).filter(x => !!x),
+        gasPrice: Math.round(
+          median(
+            blockRecords.map(block => block.baseFeePerGas + block.rewards[i]).filter(x => !!x),
+          ),
         ),
       };
     });
