@@ -16,7 +16,7 @@ For Akropolis origins, the server can be reached at https://gas-oracle.akropolis
 Clone this repo:
 
 ```
-git clone https://github.com/akropolisio/gas-oracle.git
+git clone git@github.com:akropolisio/gas-oracle.git
 cd gas-oracle
 ```
 
@@ -24,6 +24,11 @@ Install dependencies:
 
 ```
 npm install
+```
+
+Create .env with RPC urls:
+```
+cp .example.env .env && nano .env
 ```
 
 Also make sure you have [pm2](https://pm2.keymetrics.io/) installed.
@@ -53,6 +58,25 @@ Note that pm2 runs in background, so to see console logs run:
 pm2 logs
 ```
 For more commands see [pm2 docs](https://pm2.keymetrics.io/docs/usage/quick-start/).
+
+## Adding new networks
+Add RPC url to .env:
+```
+JSON_RPC_URL_42="https://kovan.infura.io/v3/API_KEY"
+```
+Provide average block time (ms) in src/rpcSettings.json (default is 15000ms):
+```
+{
+  "averageBlockTime": {
+    // ...
+    "42": 4000
+  }
+}
+```
+Restart pm2 in terminal:
+```
+pm2 restart pm2.json --update-env
+```
 
 ## API
 The data can be fetched under `[networkID]` endpoint. The response contains a json with the following structure:

@@ -1,7 +1,4 @@
-export const supportedIDs = [1, 4, 56, 97, 42161, 421611] as const;
-export type NetworkID = typeof supportedIDs[number];
-export const isSupportedNetworkID = (value: unknown): value is NetworkID =>
-  supportedIDs.includes(value as any);
+export type NetworkID = number;
 
 export type GasParams = Record<
   'slow' | 'standard' | 'fast',
