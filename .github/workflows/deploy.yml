@@ -22,4 +22,4 @@ jobs:
       - name: Install PM2
         run: npm install -g pm2
       - name: Deploy
-        run: pm2 deploy pm2.json production setup
+        run: pm2 deploy pm2.json production
