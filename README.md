@@ -75,7 +75,7 @@ Provide average block time (ms) in src/rpcSettings.json (default is 15000ms):
 ```
 Restart pm2 in terminal:
 ```
-pm2 restart pm2.json
+pm2 restart pm2.json --update-env
 ```
 
 ## API
