@@ -2,8 +2,8 @@ import NodeCache from 'node-cache';
 import Web3 from 'web3';
 import { toNumber } from 'web3-utils';
 
-import { ETHEREUM_JSON_RPC_URLS, HISTORY_BLOCK_COUNT, PERCENTILES } from '../constants';
-import { BlockRecord, NetworkID } from '../types';
+import { HISTORY_BLOCK_COUNT, PERCENTILES } from '../constants';
+import { BlockRecord } from '../types';
 import { makeWeb3 } from '../utils/makeWeb3';
 import { percentiles } from '../utils/percentiles';
 
@@ -11,8 +11,7 @@ export class BlockHistory {
   private web3: Web3;
   private cache = new NodeCache();
 
-  constructor(networkID: NetworkID, private size: number = HISTORY_BLOCK_COUNT) {
-    const rpcURL = ETHEREUM_JSON_RPC_URLS[networkID];
+  constructor(rpcURL: string, private size: number = HISTORY_BLOCK_COUNT) {
     this.web3 = makeWeb3(rpcURL);
 
     this.cache.on('set', (key: number) => {
@@ -22,7 +21,7 @@ export class BlockHistory {
 
   public async getRecords(blockCount: number = this.size): Promise<BlockRecord[]> {
     const pendingBlockNumber = await this.web3.eth.getBlockNumber();
-    const blocks = this.getBlocksFromCache(blockCount - 1, pendingBlockNumber - 1);
+    const blocks = this.getBlocksFromCache(blockCount, pendingBlockNumber);
 
     const missingBlockCount = blockCount - blocks.length;
     const newBlocks = await this.getBlocksFromWeb3(missingBlockCount, pendingBlockNumber);
@@ -30,11 +29,11 @@ export class BlockHistory {
     return blocks.concat(newBlocks);
   }
 
-  private getBlocksFromCache(blockCount: number, newestBlock: number) {
+  private getBlocksFromCache(blockCount: number, pendingBlock: number) {
     const blocks: BlockRecord[] = [];
-    let oldestBlockNumber = newestBlock - blockCount + 1;
+    let oldestBlockNumber = pendingBlock - blockCount + 1;
 
-    while (oldestBlockNumber <= newestBlock) {
+    while (oldestBlockNumber <= pendingBlock) {
       const value = this.cache.get<BlockRecord>(oldestBlockNumber);
       if (value) {
         blocks.push(value);
@@ -46,13 +45,13 @@ export class BlockHistory {
     return blocks;
   }
 
-  private async getBlocksFromWeb3(blockCount: number, newestBlock: number) {
-    const blockRecords = await this.getFeeHistory(blockCount, newestBlock).catch(() =>
-      this.getFeeHistoryFallback(blockCount, newestBlock),
+  private async getBlocksFromWeb3(blockCount: number, pendingBlock: number) {
+    const blockRecords = await this.getFeeHistory(blockCount, pendingBlock).catch(() =>
+      this.getFeeHistoryFallback(blockCount, pendingBlock),
     );
 
     this.cache.mset(
-      blockRecords.map(val => ({
+      blockRecords.slice(0, -1).map(val => ({
         val,
         key: val.number,
       })),

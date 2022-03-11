@@ -1,5 +1,5 @@
-import { AVERAGE_BLOCK_TIME, PERCENTILES, PERCENTILES_IN_BLOCKS } from '../constants';
-import { GasParams, NetworkID } from '../types';
+import { PERCENTILES, PERCENTILES_IN_BLOCKS } from '../constants';
+import { GasParams } from '../types';
 import { median } from '../utils/median';
 import { BlockHistory } from './BlockHistory';
 
@@ -7,11 +7,9 @@ export class Oracle {
   private blockHistory: BlockHistory;
   private waitTime: number[];
 
-  constructor(network: NetworkID) {
-    this.blockHistory = new BlockHistory(network);
-    this.waitTime = PERCENTILES_IN_BLOCKS.map(
-      blockCount => blockCount * AVERAGE_BLOCK_TIME[network],
-    );
+  constructor(rpcURL: string, averageBlockTime: number) {
+    this.blockHistory = new BlockHistory(rpcURL);
+    this.waitTime = PERCENTILES_IN_BLOCKS.map(blockCount => blockCount * averageBlockTime);
   }
 
   public async getGasParams(): Promise<GasParams> {

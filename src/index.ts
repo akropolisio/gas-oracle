@@ -1,10 +1,11 @@
-import assert from 'assert';
 import cors from 'cors';
 import express from 'express';
 
-import { WHITELISTED_ORIGINS } from './constants';
+import { DEFAULT_AVERAGE_BLOCK_TIME, WHITELISTED_ORIGINS } from './constants';
+import { errorHandler } from './middleware/errorHandler';
+import * as rpcSettings from './rpcSettings.json';
 import { Oracle } from './services/Oracle';
-import { isSupportedNetworkID, NetworkID } from './types';
+import { NetworkID } from './types';
 
 const app = express();
 app.use(
@@ -12,41 +13,41 @@ app.use(
     origin: WHITELISTED_ORIGINS,
   }),
 );
+app.use(errorHandler);
 
 const HOSTNAME = 'localhost';
-const args: { network: NetworkID; port: number } = {
-  network: 1,
-  port: 8080,
-};
-// eslint-disable-next-line no-console
-process.argv.forEach((val, i, array) => {
-  if (val === '--network' && array[i + 1]) {
-    const networkID = Number.parseInt(array[i + 1], 10);
-    assert(isSupportedNetworkID(networkID), 'Network is not supported');
-    args.network = networkID;
-  } else if (val === '--port' && array[i + 1]) {
-    args.port = Number.parseInt(array[i + 1], 10);
+const PORT = 8080;
+
+const oracles = Object.keys(process.env).reduce((acc, key) => {
+  const [, network] = key.match(/JSON_RPC_URL_(\d+)/) || [];
+  const networkID = Number.parseInt(network, 10);
+
+  if (!networkID) {
+    return acc;
   }
-});
+  const averageBlockTime = (rpcSettings.averageBlockTime as any)[networkID];
+  const oracle = new Oracle(
+    process.env[key] as any,
+    averageBlockTime || DEFAULT_AVERAGE_BLOCK_TIME,
+  );
 
-const oracle = new Oracle(args.network);
+  return { ...acc, [networkID]: oracle };
+}, {} as Record<NetworkID, Oracle>);
 
-app.get(`/${args.network}`, async (_req, res) => {
-  try {
+app.get(`/:network`, async (req, res) => {
+  const networkID = Number.parseInt(req.params.network, 10);
+  const oracle = oracles[networkID];
+  if (oracle) {
     const value = await oracle.getGasParams();
     res.set('Cache-Control', 'public, max-age=15').send(value);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.debug(error);
+  } else {
     res.status(404).send({
-      error: 'Not found',
-      message: 'The network you requested is not available.',
-      serverMessage: error,
+      error: `Network ${req.params.network} not supported`,
     });
   }
 });
 
-app.listen(args.port, () => {
+app.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`Server is running at http://${HOSTNAME}:${args.port}`);
+  console.log(`Server is running at http://${HOSTNAME}:${PORT}`);
 });

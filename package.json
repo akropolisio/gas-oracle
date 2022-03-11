@@ -13,7 +13,7 @@
   "main": "./build/index.js",
   "scripts": {
     "build": "npm run clean && npm run lint && tsc -p tsconfig.json",
-    "start": "npm run build && pm2 startOrRestart pm2.json",
+    "start": "npm run build && pm2 startOrRestart pm2.json  --update-env",
     "start:dev": "npm run start -- --watch && tsc -p tsconfig.json --watch",
     "stop": "pm2 stop pm2.json",
     "lint": "eslint . --ext .js,.ts && tsc --noEmit --pretty",
@@ -33,6 +33,7 @@
   "homepage": "https://github.com/akropolisio/gas-oracle#readme",
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
     "express": "^4.17.3",
     "node-cache": "^5.1.2",
     "web3": "^1.7.0",
