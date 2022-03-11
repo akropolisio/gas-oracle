@@ -1,6 +1,6 @@
 import { percentileToBlocks } from './utils/percentileToBlocks';
 
-export const HISTORY_BLOCK_COUNT = 200;
+export const BLOCK_HISTORY_SIZE = 200;
 
 export const PERCENTILES = [25, 60, 90];
 export const PERCENTILES_IN_BLOCKS = PERCENTILES.map(percentileToBlocks);

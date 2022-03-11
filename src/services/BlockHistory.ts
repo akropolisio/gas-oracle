@@ -2,7 +2,7 @@ import NodeCache from 'node-cache';
 import Web3 from 'web3';
 import { toNumber } from 'web3-utils';
 
-import { HISTORY_BLOCK_COUNT, PERCENTILES } from '../constants';
+import { BLOCK_HISTORY_SIZE, PERCENTILES } from '../constants';
 import { BlockRecord } from '../types';
 import { makeWeb3 } from '../utils/makeWeb3';
 import { percentiles } from '../utils/percentiles';
@@ -11,7 +11,7 @@ export class BlockHistory {
   private web3: Web3;
   private cache = new NodeCache();
 
-  constructor(rpcURL: string, private size: number = HISTORY_BLOCK_COUNT) {
+  constructor(rpcURL: string, private size: number = BLOCK_HISTORY_SIZE) {
     this.web3 = makeWeb3(rpcURL);
 
     this.cache.on('set', (key: number) => {
@@ -21,19 +21,26 @@ export class BlockHistory {
 
   public async getRecords(blockCount: number = this.size): Promise<BlockRecord[]> {
     const pendingBlockNumber = await this.web3.eth.getBlockNumber();
-    const blocks = this.getBlocksFromCache(blockCount, pendingBlockNumber);
+    const latestBlockNumber = pendingBlockNumber - 1;
+    const minedBlockCount = blockCount - 1;
 
-    const missingBlockCount = blockCount - blocks.length;
-    const newBlocks = await this.getBlocksFromWeb3(missingBlockCount, pendingBlockNumber);
+    const cachedBlocks = this.getBlocksFromCache(minedBlockCount, latestBlockNumber);
 
-    return blocks.concat(newBlocks);
+    const missingMinedBlockCount = minedBlockCount - cachedBlocks.length;
+    const missingBlocks = await this.getBlocksFromWeb3(missingMinedBlockCount, latestBlockNumber);
+    this.cacheRecords(missingBlocks);
+
+    const pendingBlock = await this.getBlocksFromWeb3(1, pendingBlockNumber);
+    const allBlocks = cachedBlocks.concat(missingBlocks).concat(pendingBlock);
+
+    return allBlocks;
   }
 
-  private getBlocksFromCache(blockCount: number, pendingBlock: number) {
+  private getBlocksFromCache(blockCount: number, newestBlock: number) {
     const blocks: BlockRecord[] = [];
-    let oldestBlockNumber = pendingBlock - blockCount + 1;
+    let oldestBlockNumber = newestBlock - blockCount + 1;
 
-    while (oldestBlockNumber <= pendingBlock) {
+    while (oldestBlockNumber <= newestBlock) {
       const value = this.cache.get<BlockRecord>(oldestBlockNumber);
       if (value) {
         blocks.push(value);
@@ -45,16 +52,9 @@ export class BlockHistory {
     return blocks;
   }
 
-  private async getBlocksFromWeb3(blockCount: number, pendingBlock: number) {
-    const blockRecords = await this.getFeeHistory(blockCount, pendingBlock).catch(() =>
-      this.getFeeHistoryFallback(blockCount, pendingBlock),
-    );
-
-    this.cache.mset(
-      blockRecords.slice(0, -1).map(val => ({
-        val,
-        key: val.number,
-      })),
+  private async getBlocksFromWeb3(blockCount: number, newestBlock: number) {
+    const blockRecords = await this.getFeeHistory(blockCount, newestBlock).catch(() =>
+      this.getFeeHistoryFallback(blockCount, newestBlock),
     );
 
     return blockRecords;
@@ -91,5 +91,14 @@ export class BlockHistory {
         PERCENTILES,
       ),
     }));
+  }
+
+  private cacheRecords(blockRecords: BlockRecord[]) {
+    return this.cache.mset(
+      blockRecords.map(val => ({
+        val,
+        key: val.number,
+      })),
+    );
   }
 }
