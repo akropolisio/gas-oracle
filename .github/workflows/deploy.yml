@@ -1,0 +1,25 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Set up SSH
+        run: |
+          echo "$SSH_KEY" > ./deploy.key
+          sudo chmod 400 ./deploy.key
+        shell: bash
+        env:
+          SSH_KEY: ${{secrets.SSH_KEY}}
+      - name: Install PM2
+        run: npm install -g pm2
+      - name: Deploy
+        run: pm2 deploy pm2.json production setup

@@ -13,7 +13,7 @@
   "main": "./build/index.js",
   "scripts": {
     "build": "npm run clean && npm run lint && tsc -p tsconfig.json",
-    "start": "npm run build && pm2 start pm2.json",
+    "start": "npm run build && pm2 startOrRestart pm2.json",
     "start:dev": "npm run start -- --watch && tsc -p tsconfig.json --watch",
     "stop": "pm2 stop pm2.json",
     "lint": "eslint . --ext .js,.ts && tsc --noEmit --pretty",
