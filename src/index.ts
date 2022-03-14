@@ -2,7 +2,6 @@ import cors from 'cors';
 import express from 'express';
 
 import { DEFAULT_AVERAGE_BLOCK_TIME, WHITELISTED_ORIGINS } from './constants';
-import { errorHandler } from './middleware/errorHandler';
 import * as rpcSettings from './rpcSettings.json';
 import { Oracle } from './services/Oracle';
 import { NetworkID } from './types';
@@ -13,7 +12,6 @@ app.use(
     origin: WHITELISTED_ORIGINS,
   }),
 );
-app.use(errorHandler);
 
 const HOSTNAME = 'localhost';
 const PORT = 8080;
@@ -35,14 +33,23 @@ const oracles = Object.keys(process.env).reduce((acc, key) => {
 }, {} as Record<NetworkID, Oracle>);
 
 app.get(`/:network`, async (req, res) => {
-  const networkID = Number.parseInt(req.params.network, 10);
-  const oracle = oracles[networkID];
-  if (oracle) {
-    const value = await oracle.getGasParams();
-    res.set('Cache-Control', 'public, max-age=15').send(value);
-  } else {
-    res.status(404).send({
-      error: `Network ${req.params.network} not supported`,
+  try {
+    const networkID = Number.parseInt(req.params.network, 10);
+    const oracle = oracles[networkID];
+    if (oracle) {
+      const value = await oracle.getGasParams();
+      res.set('Cache-Control', 'public, max-age=15').send(value);
+    } else {
+      res.status(404).send({
+        error: `Network ${req.params.network} not supported`,
+      });
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.debug(error);
+
+    res.status(500).send({
+      error: String(error),
     });
   }
 });
