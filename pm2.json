@@ -8,16 +8,11 @@
   ],
   "deploy": {
     "production": {
-      "key": "deploy.key",
-      "user": "github-ci",
-      "host": [
-        "64.227.111.66"
-      ],
-      "ssh_options": "StrictHostKeyChecking=no",
+      "host": "github-ci",
       "ref": "origin/master",
       "repo": "git@github.com:akropolisio/gas-oracle.git",
       "path": "/home/github-ci/app",
-      "pre-deploy-local": "rsync -e ssh .env github-ci@64.227.111.66:~/.env",
+      "pre-deploy-local": "rsync -e ssh .env github-ci:~/.env",
       "post-deploy": "mv ~/.env . && npm install && npm run start && pm2 save"
     }
   }
