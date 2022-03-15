@@ -1,5 +1,6 @@
 import NodeCache from 'node-cache';
 import Web3 from 'web3';
+import { BlockTransactionObject } from 'web3-eth';
 import { toNumber } from 'web3-utils';
 
 import { BLOCK_HISTORY_SIZE, PERCENTILES } from '../constants';
@@ -77,20 +78,31 @@ export class BlockHistory {
     blockCount: number,
     newestBlock: number,
   ): Promise<BlockRecord[]> {
-    const blocks = await Promise.all(
+    const oldestBlock = newestBlock - blockCount + 1;
+    const blocks = await Promise.allSettled<BlockTransactionObject>(
       Array.from(Array(blockCount), (_, index) =>
-        this.web3.eth.getBlock(newestBlock - index, true),
+        this.web3.eth.getBlock(oldestBlock + index, true),
       ),
     );
 
-    return blocks.map(({ number, transactions }) => ({
-      number,
-      baseFeePerGas: 0,
-      rewards: percentiles(
-        transactions.map(tx => toNumber(tx.gasPrice)),
-        PERCENTILES,
-      ),
-    }));
+    return blocks.reduce((acc, block, index) => {
+      if (block.status === 'rejected' || !block.value) {
+        console.warn(
+          `Skipping block ${oldestBlock + index} (newest block: ${newestBlock}): ${
+            block.status === 'rejected' ? block.reason : 'value is empty'
+          }`,
+        );
+        return acc;
+      }
+      return acc.concat({
+        number: block.value.number,
+        baseFeePerGas: 0,
+        rewards: percentiles(
+          block.value.transactions.map(tx => toNumber(tx.gasPrice)),
+          PERCENTILES,
+        ),
+      });
+    }, [] as BlockRecord[]);
   }
 
   private cacheRecords(blockRecords: BlockRecord[]) {

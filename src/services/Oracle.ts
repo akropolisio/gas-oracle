@@ -14,6 +14,9 @@ export class Oracle {
 
   public async getGasParams(): Promise<GasParams> {
     const blockRecords = await this.blockHistory.getRecords();
+    if (blockRecords.length === 0) {
+      throw Error('Not enough data to calculate gas params');
+    }
 
     const { baseFeePerGas: pendingBaseFeePerGas, number } = blockRecords[blockRecords.length - 1];
     const gasParams = PERCENTILES.map((percent, i) => {

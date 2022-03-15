@@ -45,8 +45,7 @@ app.get(`/:network`, async (req, res) => {
       });
     }
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.debug(error);
+    console.warn(`NetworkID ${req.params.network}:`, error);
 
     res.status(500).send({
       error: String(error),
