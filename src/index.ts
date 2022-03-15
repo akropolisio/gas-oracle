@@ -40,16 +40,12 @@ app.get(`/:network`, async (req, res) => {
       const value = await oracle.getGasParams();
       res.set('Cache-Control', 'public, max-age=15').send(value);
     } else {
-      res.status(404).send({
-        error: `Network ${req.params.network} not supported`,
-      });
+      res.status(404).send(`Network ${req.params.network} not supported`);
     }
   } catch (error) {
     console.warn(`NetworkID ${req.params.network}:`, error);
 
-    res.status(500).send({
-      error: String(error),
-    });
+    res.status(500).send(String(error));
   }
 });
 
