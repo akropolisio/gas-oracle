@@ -24,73 +24,87 @@ export class BlockHistory {
     const latestBlockNumber = pendingBlockNumber - 1;
     const minedBlockCount = blockCount - 1;
 
-    const cachedBlocks = this.getBlocksFromCache(minedBlockCount, latestBlockNumber);
+    const { cachedBlocks, missingBlocks } = this.getBlocksFromCache(
+      minedBlockCount,
+      latestBlockNumber,
+    );
 
-    const missingMinedBlockCount = minedBlockCount - cachedBlocks.length;
-    const missingBlocks = await this.getBlocksFromWeb3(missingMinedBlockCount, latestBlockNumber);
-    this.cacheRecords(missingBlocks);
+    const newBlocks = await this.getBlocksFromWeb3(missingBlocks);
+    this.cacheRecords(newBlocks);
 
-    const pendingBlock = await this.getBlocksFromWeb3(1, pendingBlockNumber);
-    const allBlocks = cachedBlocks.concat(missingBlocks).concat(pendingBlock);
+    const [pendingBlock] = await this.getBlocksFromWeb3([pendingBlockNumber]);
+    const allBlocks = cachedBlocks.concat(newBlocks).concat(pendingBlock || []);
 
     return allBlocks;
   }
 
-  private getBlocksFromCache(blockCount: number, newestBlock: number) {
-    const blocks: BlockRecord[] = [];
-    let oldestBlockNumber = newestBlock - blockCount + 1;
+  private getBlocksFromCache(blockCount: number, newestBlockNumber: number) {
+    const cachedBlocks: BlockRecord[] = [];
+    const missingBlocks: number[] = [];
+    let oldestBlockNumber = newestBlockNumber - blockCount + 1;
 
-    while (oldestBlockNumber <= newestBlock) {
+    while (oldestBlockNumber <= newestBlockNumber) {
       const value = this.cache.get<BlockRecord>(oldestBlockNumber);
       if (value) {
-        blocks.push(value);
-        oldestBlockNumber += 1;
+        cachedBlocks.push(value);
       } else {
-        break;
+        missingBlocks.push(oldestBlockNumber);
       }
+      oldestBlockNumber += 1;
     }
-    return blocks;
+    return { cachedBlocks, missingBlocks };
   }
 
-  private async getBlocksFromWeb3(blockCount: number, newestBlock: number) {
-    const blockRecords = await this.getFeeHistory(blockCount, newestBlock).catch(() =>
-      this.getFeeHistoryFallback(blockCount, newestBlock),
+  private async getBlocksFromWeb3(blockNumbers: number[]) {
+    const blockRecords = await this.getFeeHistory(blockNumbers).catch(() =>
+      this.getFeeHistoryFallback(blockNumbers),
     );
 
     return blockRecords;
   }
 
-  private async getFeeHistory(blockCount: number, newestBlock: number): Promise<BlockRecord[]> {
+  private async getFeeHistory(blockNumbers: number[]): Promise<BlockRecord[]> {
+    const newestBlockNumber = blockNumbers[blockNumbers.length - 1];
+    const oldestBlockNumber = blockNumbers[0];
+    const blockCount = newestBlockNumber - oldestBlockNumber + 1;
+
     const { reward, oldestBlock, baseFeePerGas } = await this.web3.eth.getFeeHistory(
       blockCount,
-      newestBlock,
+      newestBlockNumber,
       PERCENTILES,
     );
-    return reward.map((blockRewards, index) => ({
-      number: toNumber(oldestBlock) + index,
-      baseFeePerGas: toNumber(baseFeePerGas[index]),
-      rewards: blockRewards.map(toNumber),
-    }));
+    return reward
+      .map((blockRewards, index) => ({
+        number: toNumber(oldestBlock) + index,
+        baseFeePerGas: toNumber(baseFeePerGas[index]),
+        rewards: blockRewards.map(toNumber),
+      }))
+      .filter(value => blockNumbers.includes(value.number));
   }
 
-  private async getFeeHistoryFallback(
-    blockCount: number,
-    newestBlock: number,
-  ): Promise<BlockRecord[]> {
-    const blocks = await Promise.all(
-      Array.from(Array(blockCount), (_, index) =>
-        this.web3.eth.getBlock(newestBlock - index, true),
-      ),
+  private async getFeeHistoryFallback(blockNumbers: number[]): Promise<BlockRecord[]> {
+    const blocks = await Promise.allSettled(
+      blockNumbers.map(blockNumber => this.web3.eth.getBlock(blockNumber, true)),
     );
 
-    return blocks.map(({ number, transactions }) => ({
-      number,
-      baseFeePerGas: 0,
-      rewards: percentiles(
-        transactions.map(tx => toNumber(tx.gasPrice)),
-        PERCENTILES,
-      ),
-    }));
+    return blocks.reduce((acc, block, index) => {
+      if (block.status === 'rejected' || !block.value) {
+        console.warn(
+          `Skipping block ${blockNumbers[index]}: ${
+            block.status === 'rejected' ? block.reason : 'value is empty'
+          }`,
+        );
+        return acc;
+      }
+      return acc.concat({
+        number: block.value.number,
+        baseFeePerGas: 0,
+        rewards: percentiles(
+          block.value.transactions.map(tx => toNumber(tx.gasPrice)),
+          PERCENTILES,
+        ),
+      });
+    }, [] as BlockRecord[]);
   }
 
   private cacheRecords(blockRecords: BlockRecord[]) {
