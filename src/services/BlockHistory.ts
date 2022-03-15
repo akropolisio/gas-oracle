@@ -33,23 +33,17 @@ export class BlockHistory {
     this.cacheRecords(newBlocks);
 
     const [pendingBlock] = await this.getBlocksFromWeb3([pendingBlockNumber]);
-    const allBlocks = cachedBlocks.concat(newBlocks).concat(
-      pendingBlock || {
-        number: pendingBlockNumber,
-        baseFeePerGas: 0,
-        rewards: [],
-      },
-    );
+    const allBlocks = cachedBlocks.concat(newBlocks).concat(pendingBlock || []);
 
     return allBlocks;
   }
 
-  private getBlocksFromCache(blockCount: number, newestBlock: number) {
+  private getBlocksFromCache(blockCount: number, newestBlockNumber: number) {
     const cachedBlocks: BlockRecord[] = [];
     const missingBlocks: number[] = [];
-    let oldestBlockNumber = newestBlock - blockCount + 1;
+    let oldestBlockNumber = newestBlockNumber - blockCount + 1;
 
-    while (oldestBlockNumber <= newestBlock) {
+    while (oldestBlockNumber <= newestBlockNumber) {
       const value = this.cache.get<BlockRecord>(oldestBlockNumber);
       if (value) {
         cachedBlocks.push(value);
@@ -70,19 +64,22 @@ export class BlockHistory {
   }
 
   private async getFeeHistory(blockNumbers: number[]): Promise<BlockRecord[]> {
-    const newestBlock = blockNumbers[blockNumbers.length - 1];
-    const blockCount = newestBlock - blockNumbers[0] + 1;
+    const newestBlockNumber = blockNumbers[blockNumbers.length - 1];
+    const oldestBlockNumber = blockNumbers[0];
+    const blockCount = newestBlockNumber - oldestBlockNumber + 1;
 
     const { reward, oldestBlock, baseFeePerGas } = await this.web3.eth.getFeeHistory(
       blockCount,
-      newestBlock,
+      newestBlockNumber,
       PERCENTILES,
     );
-    return reward.map((blockRewards, index) => ({
-      number: toNumber(oldestBlock) + index,
-      baseFeePerGas: toNumber(baseFeePerGas[index]),
-      rewards: blockRewards.map(toNumber),
-    }));
+    return reward
+      .map((blockRewards, index) => ({
+        number: toNumber(oldestBlock) + index,
+        baseFeePerGas: toNumber(baseFeePerGas[index]),
+        rewards: blockRewards.map(toNumber),
+      }))
+      .filter(value => blockNumbers.includes(value.number));
   }
 
   private async getFeeHistoryFallback(blockNumbers: number[]): Promise<BlockRecord[]> {
