@@ -1,6 +1,5 @@
 import NodeCache from 'node-cache';
 import Web3 from 'web3';
-import { BlockTransactionObject } from 'web3-eth';
 import { toNumber } from 'web3-utils';
 
 import { BLOCK_HISTORY_SIZE, PERCENTILES } from '../constants';
@@ -25,43 +24,55 @@ export class BlockHistory {
     const latestBlockNumber = pendingBlockNumber - 1;
     const minedBlockCount = blockCount - 1;
 
-    const cachedBlocks = this.getBlocksFromCache(minedBlockCount, latestBlockNumber);
+    const { cachedBlocks, missingBlocks } = this.getBlocksFromCache(
+      minedBlockCount,
+      latestBlockNumber,
+    );
 
-    const missingMinedBlockCount = minedBlockCount - cachedBlocks.length;
-    const missingBlocks = await this.getBlocksFromWeb3(missingMinedBlockCount, latestBlockNumber);
-    this.cacheRecords(missingBlocks);
+    const newBlocks = await this.getBlocksFromWeb3(missingBlocks);
+    this.cacheRecords(newBlocks);
 
-    const pendingBlock = await this.getBlocksFromWeb3(1, pendingBlockNumber);
-    const allBlocks = cachedBlocks.concat(missingBlocks).concat(pendingBlock);
+    const [pendingBlock] = await this.getBlocksFromWeb3([pendingBlockNumber]);
+    const allBlocks = cachedBlocks.concat(newBlocks).concat(
+      pendingBlock || {
+        number: pendingBlockNumber,
+        baseFeePerGas: 0,
+        rewards: [],
+      },
+    );
 
     return allBlocks;
   }
 
   private getBlocksFromCache(blockCount: number, newestBlock: number) {
-    const blocks: BlockRecord[] = [];
+    const cachedBlocks: BlockRecord[] = [];
+    const missingBlocks: number[] = [];
     let oldestBlockNumber = newestBlock - blockCount + 1;
 
     while (oldestBlockNumber <= newestBlock) {
       const value = this.cache.get<BlockRecord>(oldestBlockNumber);
       if (value) {
-        blocks.push(value);
-        oldestBlockNumber += 1;
+        cachedBlocks.push(value);
       } else {
-        break;
+        missingBlocks.push(oldestBlockNumber);
       }
+      oldestBlockNumber += 1;
     }
-    return blocks;
+    return { cachedBlocks, missingBlocks };
   }
 
-  private async getBlocksFromWeb3(blockCount: number, newestBlock: number) {
-    const blockRecords = await this.getFeeHistory(blockCount, newestBlock).catch(() =>
-      this.getFeeHistoryFallback(blockCount, newestBlock),
+  private async getBlocksFromWeb3(blockNumbers: number[]) {
+    const blockRecords = await this.getFeeHistory(blockNumbers).catch(() =>
+      this.getFeeHistoryFallback(blockNumbers),
     );
 
     return blockRecords;
   }
 
-  private async getFeeHistory(blockCount: number, newestBlock: number): Promise<BlockRecord[]> {
+  private async getFeeHistory(blockNumbers: number[]): Promise<BlockRecord[]> {
+    const newestBlock = blockNumbers[blockNumbers.length - 1];
+    const blockCount = newestBlock - blockNumbers[0] + 1;
+
     const { reward, oldestBlock, baseFeePerGas } = await this.web3.eth.getFeeHistory(
       blockCount,
       newestBlock,
@@ -74,21 +85,15 @@ export class BlockHistory {
     }));
   }
 
-  private async getFeeHistoryFallback(
-    blockCount: number,
-    newestBlock: number,
-  ): Promise<BlockRecord[]> {
-    const oldestBlock = newestBlock - blockCount + 1;
-    const blocks = await Promise.allSettled<BlockTransactionObject>(
-      Array.from(Array(blockCount), (_, index) =>
-        this.web3.eth.getBlock(oldestBlock + index, true),
-      ),
+  private async getFeeHistoryFallback(blockNumbers: number[]): Promise<BlockRecord[]> {
+    const blocks = await Promise.allSettled(
+      blockNumbers.map(blockNumber => this.web3.eth.getBlock(blockNumber, true)),
     );
 
     return blocks.reduce((acc, block, index) => {
       if (block.status === 'rejected' || !block.value) {
         console.warn(
-          `Skipping block ${oldestBlock + index} (newest block: ${newestBlock}): ${
+          `Skipping block ${blockNumbers[index]}: ${
             block.status === 'rejected' ? block.reason : 'value is empty'
           }`,
         );
