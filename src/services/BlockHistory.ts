@@ -1,76 +1,77 @@
+/* eslint-disable no-await-in-loop */
+/* eslint-disable no-console */
 import NodeCache from 'node-cache';
 import Web3 from 'web3';
 import { toNumber } from 'web3-utils';
 
 import { BLOCK_HISTORY_SIZE, PERCENTILES } from '../constants';
-import { BlockRecord } from '../types';
+import { BlockRecord, BlockNumber } from '../types';
 import { makeWeb3 } from '../utils/makeWeb3';
 import { percentiles } from '../utils/percentiles';
 
 export class BlockHistory {
   private web3: Web3;
   private cache = new NodeCache();
+  private size: number = BLOCK_HISTORY_SIZE;
 
-  constructor(rpcURL: string, private size: number = BLOCK_HISTORY_SIZE) {
+  // TODO: remove network
+  constructor(rpcURL: string, private averageBlockTime: number, private network: number) {
     this.web3 = makeWeb3(rpcURL);
 
     this.cache.on('set', (key: number) => {
       this.cache.del(key - this.size);
     });
+
+    this.connect();
   }
 
-  public async getRecords(blockCount: number = this.size): Promise<BlockRecord[]> {
-    const pendingBlockNumber = await this.web3.eth.getBlockNumber();
-    const latestBlockNumber = pendingBlockNumber - 1;
-    const minedBlockCount = blockCount - 1;
+  public async getRecords(): Promise<BlockRecord[]> {
+    const cachedBlocks = this.getBlocksFromCache();
 
-    const { cachedBlocks, missingBlocks } = this.getBlocksFromCache(
-      minedBlockCount,
-      latestBlockNumber,
+    const pendingBlock = await this.getBlocksFromWeb3(1, 'pending');
+    console.log('========== [Network %s]: Request =========', this.network);
+    console.log(
+      'blocks from cache: %s, pending block: %s',
+      cachedBlocks.length,
+      pendingBlock[0].number,
     );
+    console.log('========== ======= =========');
 
-    const newBlocks = await this.getBlocksFromWeb3(missingBlocks);
-    this.cacheRecords(newBlocks);
-
-    const [pendingBlock] = await this.getBlocksFromWeb3([pendingBlockNumber]);
-    const allBlocks = cachedBlocks.concat(newBlocks).concat(pendingBlock || []);
+    const allBlocks = cachedBlocks.concat(pendingBlock);
 
     return allBlocks;
   }
 
-  private getBlocksFromCache(blockCount: number, newestBlockNumber: number) {
-    const cachedBlocks: BlockRecord[] = [];
-    const missingBlocks: number[] = [];
-    let oldestBlockNumber = newestBlockNumber - blockCount + 1;
+  private getBlocksFromCache() {
+    const cachedBlocks = this.cache.keys().reduce((acc, key) => {
+      const block = this.cache.get<BlockRecord>(key);
+      return block ? acc.concat(block) : acc;
+    }, [] as BlockRecord[]);
 
-    while (oldestBlockNumber <= newestBlockNumber) {
-      const value = this.cache.get<BlockRecord>(oldestBlockNumber);
-      if (value) {
-        cachedBlocks.push(value);
-      } else {
-        missingBlocks.push(oldestBlockNumber);
-      }
-      oldestBlockNumber += 1;
-    }
-    return { cachedBlocks, missingBlocks };
+    return cachedBlocks;
   }
 
-  private async getBlocksFromWeb3(blockNumbers: number[]) {
-    const blockRecords = await this.getFeeHistory(blockNumbers).catch(() =>
-      this.getFeeHistoryFallback(blockNumbers),
+  private async getBlocksFromWeb3(blockCount: number, lastBlockNumber: BlockNumber) {
+    const blockRecords = await this.getFeeHistory(blockCount, lastBlockNumber).catch(() =>
+      this.getFeeHistoryFallback(blockCount, lastBlockNumber),
     );
 
     return blockRecords;
   }
 
-  private async getFeeHistory(blockNumbers: number[]): Promise<BlockRecord[]> {
-    const newestBlockNumber = blockNumbers[blockNumbers.length - 1];
-    const oldestBlockNumber = blockNumbers[0];
-    const blockCount = newestBlockNumber - oldestBlockNumber + 1;
-
+  private async getFeeHistory(
+    blockCount: number,
+    lastBlockNumber: BlockNumber,
+  ): Promise<BlockRecord[]> {
+    console.log(
+      '[Network %s] eth_getFeeHistory, last block: %s',
+      this.network,
+      blockCount,
+      lastBlockNumber,
+    );
     const { reward, oldestBlock, baseFeePerGas } = await this.web3.eth.getFeeHistory(
       blockCount,
-      newestBlockNumber,
+      lastBlockNumber,
       PERCENTILES,
     );
     return reward
@@ -79,32 +80,54 @@ export class BlockHistory {
         baseFeePerGas: toNumber(baseFeePerGas[index]),
         rewards: blockRewards.map(toNumber),
       }))
-      .filter(value => blockNumbers.includes(value.number));
+      .filter(value => !this.cache.has(value.number));
   }
 
-  private async getFeeHistoryFallback(blockNumbers: number[]): Promise<BlockRecord[]> {
-    const blocks = await Promise.allSettled(
-      blockNumbers.map(blockNumber => this.web3.eth.getBlock(blockNumber, true)),
-    );
+  private async getFeeHistoryFallback(
+    blockCount: number,
+    lastBlockNumber: BlockNumber,
+  ): Promise<BlockRecord[]> {
+    const result: BlockRecord[] = [];
+    let progress = 0;
+    let blockNumber = lastBlockNumber;
 
-    return blocks.reduce((acc, block, index) => {
-      if (block.status === 'rejected' || !block.value) {
-        console.warn(
-          `Skipping block ${blockNumbers[index]}: ${
-            block.status === 'rejected' ? block.reason : 'value is empty'
-          }`,
-        );
-        return acc;
+    while (progress < blockCount) {
+      let block;
+      if (!this.cache.has(blockNumber)) {
+        console.log('[Network %s] eth_getBlockByNumber, last block: %s', this.network, blockNumber);
+
+        // eslint-disable-next-line @typescript-eslint/no-loop-func
+        block = await this.web3.eth.getBlock(blockNumber, true).catch(err => {
+          console.warn('[Network %s] Skipping block %s: %s', this.network, blockNumber, err);
+          return null;
+        });
+
+        if (block) {
+          result.push({
+            number: block.number,
+            baseFeePerGas: 0,
+            rewards: percentiles(
+              block.transactions.map(tx => toNumber(tx.gasPrice)),
+              PERCENTILES,
+            ),
+          });
+        }
       }
-      return acc.concat({
-        number: block.value.number,
-        baseFeePerGas: 0,
-        rewards: percentiles(
-          block.value.transactions.map(tx => toNumber(tx.gasPrice)),
-          PERCENTILES,
-        ),
-      });
-    }, [] as BlockRecord[]);
+
+      blockNumber = block ? block.number - 1 : await this.getPreviousBlockNumber(blockNumber);
+      progress += 1;
+    }
+
+    return result.reverse();
+  }
+
+  private async getPreviousBlockNumber(blockNumber: BlockNumber): Promise<number> {
+    if (blockNumber === 'pending' || blockNumber === 'latest') {
+      console.log('[Network %s] eth_blockNumber', this.network);
+      const pending = await this.web3.eth.getBlockNumber();
+      return blockNumber === 'pending' ? pending - 1 : pending - 2;
+    }
+    return blockNumber - 1;
   }
 
   private cacheRecords(blockRecords: BlockRecord[]) {
@@ -114,5 +137,22 @@ export class BlockHistory {
         key: val.number,
       })),
     );
+  }
+
+  private async connect() {
+    const startPolling = async () => {
+      const newRecords = await this.getBlocksFromWeb3(this.size, 'latest');
+      console.log(
+        '[Network %s]: Received: %s blocks, latest: %s',
+        this.network,
+        newRecords.length,
+        newRecords[newRecords.length - 1]?.number,
+      );
+      this.cacheRecords(newRecords);
+      console.log('[Network %s]: Cache size is %s', this.network, this.cache.keys().length);
+      setTimeout(startPolling, this.averageBlockTime);
+    };
+
+    return startPolling();
   }
 }
