@@ -18,10 +18,6 @@ export class BlockHistory {
   constructor(rpcURL: string, private averageBlockTime: number, private network: number) {
     this.web3 = makeWeb3(rpcURL);
 
-    this.cache.on('set', (key: number) => {
-      this.cache.del(key - this.size);
-    });
-
     this.connect();
   }
 
@@ -131,12 +127,18 @@ export class BlockHistory {
   }
 
   private cacheRecords(blockRecords: BlockRecord[]) {
-    return this.cache.mset(
+    const successfullyCached = this.cache.mset(
       blockRecords.map(val => ({
         val,
         key: val.number,
       })),
     );
+    if (successfullyCached) {
+      const cacheKeys = this.cache.keys();
+      const latestBlock = Math.max(...cacheKeys.map(Number));
+      this.cache.del(cacheKeys.filter(key => Number(key) <= latestBlock - this.size));
+      console.log(Math.max(...cacheKeys.map(Number)));
+    }
   }
 
   private async connect() {
