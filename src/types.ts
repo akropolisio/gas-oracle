@@ -18,3 +18,5 @@ export type BlockRecord = {
   baseFeePerGas: number;
   rewards: number[];
 };
+
+export type BlockNumber = number | 'latest' | 'pending';

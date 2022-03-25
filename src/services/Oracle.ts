@@ -8,7 +8,7 @@ export class Oracle {
   private waitTime: number[];
 
   constructor(rpcURL: string, averageBlockTime: number) {
-    this.blockHistory = new BlockHistory(rpcURL);
+    this.blockHistory = new BlockHistory(rpcURL, averageBlockTime);
     this.waitTime = PERCENTILES_IN_BLOCKS.map(blockCount => blockCount * averageBlockTime);
   }
 
