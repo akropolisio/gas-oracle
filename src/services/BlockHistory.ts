@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-/* eslint-disable no-console */
 import NodeCache from 'node-cache';
 import Web3 from 'web3';
 import { toNumber } from 'web3-utils';
@@ -14,8 +13,7 @@ export class BlockHistory {
   private cache = new NodeCache();
   private size: number = BLOCK_HISTORY_SIZE;
 
-  // TODO: remove network
-  constructor(rpcURL: string, private averageBlockTime: number, private network: number) {
+  constructor(rpcURL: string, private averageBlockTime: number) {
     this.web3 = makeWeb3(rpcURL);
 
     this.connect();
@@ -23,15 +21,7 @@ export class BlockHistory {
 
   public async getRecords(): Promise<BlockRecord[]> {
     const cachedBlocks = this.getBlocksFromCache();
-
     const pendingBlock = await this.getBlocksFromWeb3(1, 'pending');
-    console.log('========== [Network %s]: Request =========', this.network);
-    console.log(
-      'blocks from cache: %s, pending block: %s',
-      cachedBlocks.length,
-      pendingBlock[0].number,
-    );
-    console.log('========== ======= =========');
 
     const allBlocks = cachedBlocks.concat(pendingBlock);
 
@@ -59,12 +49,6 @@ export class BlockHistory {
     blockCount: number,
     lastBlockNumber: BlockNumber,
   ): Promise<BlockRecord[]> {
-    console.log(
-      '[Network %s] eth_getFeeHistory, last block: %s',
-      this.network,
-      blockCount,
-      lastBlockNumber,
-    );
     const { reward, oldestBlock, baseFeePerGas } = await this.web3.eth.getFeeHistory(
       blockCount,
       lastBlockNumber,
@@ -90,11 +74,9 @@ export class BlockHistory {
     while (progress < blockCount) {
       let block;
       if (!this.cache.has(blockNumber)) {
-        console.log('[Network %s] eth_getBlockByNumber, last block: %s', this.network, blockNumber);
-
         // eslint-disable-next-line @typescript-eslint/no-loop-func
         block = await this.web3.eth.getBlock(blockNumber, true).catch(err => {
-          console.warn('[Network %s] Skipping block %s: %s', this.network, blockNumber, err);
+          console.warn('Skipping block %s: %s', blockNumber, err);
           return null;
         });
 
@@ -119,7 +101,6 @@ export class BlockHistory {
 
   private async getPreviousBlockNumber(blockNumber: BlockNumber): Promise<number> {
     if (blockNumber === 'pending' || blockNumber === 'latest') {
-      console.log('[Network %s] eth_blockNumber', this.network);
       const pending = await this.web3.eth.getBlockNumber();
       return blockNumber === 'pending' ? pending - 1 : pending - 2;
     }
@@ -137,21 +118,14 @@ export class BlockHistory {
       const cacheKeys = this.cache.keys();
       const latestBlock = Math.max(...cacheKeys.map(Number));
       this.cache.del(cacheKeys.filter(key => Number(key) <= latestBlock - this.size));
-      console.log(Math.max(...cacheKeys.map(Number)));
     }
   }
 
   private async connect() {
     const startPolling = async () => {
       const newRecords = await this.getBlocksFromWeb3(this.size, 'latest');
-      console.log(
-        '[Network %s]: Received: %s blocks, latest: %s',
-        this.network,
-        newRecords.length,
-        newRecords[newRecords.length - 1]?.number,
-      );
       this.cacheRecords(newRecords);
-      console.log('[Network %s]: Cache size is %s', this.network, this.cache.keys().length);
+
       setTimeout(startPolling, this.averageBlockTime);
     };
 
