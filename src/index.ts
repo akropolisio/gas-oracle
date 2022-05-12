@@ -27,6 +27,7 @@ const oracles = Object.keys(process.env).reduce((acc, key) => {
   const oracle = new Oracle(
     process.env[key] as any,
     averageBlockTime || DEFAULT_AVERAGE_BLOCK_TIME,
+    networkID,
   );
 
   return { ...acc, [networkID]: oracle };
