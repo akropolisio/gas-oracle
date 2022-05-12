@@ -13,7 +13,7 @@ export class BlockHistory {
   private cache = new NodeCache();
   private size: number = BLOCK_HISTORY_SIZE;
 
-  constructor(rpcURL: string, private averageBlockTime: number) {
+  constructor(rpcURL: string, private averageBlockTime: number, private networkID: number) {
     this.web3 = makeWeb3(rpcURL);
 
     this.connect();
@@ -76,7 +76,7 @@ export class BlockHistory {
       if (!this.cache.has(blockNumber)) {
         // eslint-disable-next-line @typescript-eslint/no-loop-func
         block = await this.web3.eth.getBlock(blockNumber, true).catch(err => {
-          console.warn('Skipping block %s: %s', blockNumber, err);
+          console.warn('[%s] Skipping block %s: %s', this.networkID, blockNumber, err);
           return null;
         });
 
@@ -123,10 +123,14 @@ export class BlockHistory {
 
   private async connect() {
     const startPolling = async () => {
-      const newRecords = await this.getBlocksFromWeb3(this.size, 'latest');
-      this.cacheRecords(newRecords);
-
-      setTimeout(startPolling, this.averageBlockTime);
+      try {
+        const newRecords = await this.getBlocksFromWeb3(this.size, 'latest');
+        this.cacheRecords(newRecords);
+      } catch (error) {
+        console.warn('[%s] Restarting polling... %s', this.networkID, error);
+      } finally {
+        setTimeout(startPolling, this.averageBlockTime);
+      }
     };
 
     return startPolling();
