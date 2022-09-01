@@ -32,18 +32,12 @@ jobs:
         run: |
           touch .env
           echo "JSON_RPC_URL_1=\"$JSON_RPC_URL_1\"
-          JSON_RPC_URL_4=\"$JSON_RPC_URL_4\"
           JSON_RPC_URL_56=\"$JSON_RPC_URL_56\"
-          JSON_RPC_URL_97=\"$JSON_RPC_URL_97\"
-          JSON_RPC_URL_42161=\"$JSON_RPC_URL_42161\"
-          JSON_RPC_URL_421611=\"$JSON_RPC_URL_421611\"" >> .env
+          JSON_RPC_URL_42161=\"$JSON_RPC_URL_42161\"" >> .env
         shell: bash
         env:
           JSON_RPC_URL_1: ${{ secrets.JSON_RPC_URL_1 }}
-          JSON_RPC_URL_4: ${{ secrets.JSON_RPC_URL_4 }}
           JSON_RPC_URL_56: ${{ secrets.JSON_RPC_URL_56 }}
-          JSON_RPC_URL_97: ${{ secrets.JSON_RPC_URL_97 }}
           JSON_RPC_URL_42161: ${{ secrets.JSON_RPC_URL_42161 }}
-          JSON_RPC_URL_421611: ${{ secrets.JSON_RPC_URL_421611 }}
       - name: Deploy
         run: pm2 deploy pm2.json production
