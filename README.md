@@ -6,11 +6,8 @@ For Akropolis origins, the server can be reached at https://gas-oracle.akropolis
 
 ## Supported networks
 - Ethereum Mainnet 1
-- Ethereum Rinkeby 4
 - BSC Mainnet 56
-- BSC Testnet 97
 - Arbitrum One 42161
-- Arbitrum Testnet 421611
 
 ## Installation
 Clone this repo:

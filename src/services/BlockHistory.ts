@@ -22,15 +22,23 @@ export class BlockHistory {
   public async getRecords(): Promise<BlockRecord[]> {
     const cachedBlocks = this.getBlocksFromCache();
     const pendingBlock = await this.getBlocksFromWeb3(1, 'pending');
-
     const allBlocks = cachedBlocks.concat(pendingBlock);
+
+    if (cachedBlocks.length < this.size / 2) {
+      console.warn(
+        '[%s] Gas price might be inaccurate. Expected %s cached records, but got %s',
+        this.networkID,
+        this.size,
+        cachedBlocks.length,
+      );
+    }
 
     return allBlocks;
   }
 
   private getBlocksFromCache() {
     const cachedBlocks = this.cache.keys().reduce((acc, key) => {
-      const block = this.cache.get<BlockRecord>(key);
+      const block: BlockRecord | undefined = this.cache.get<BlockRecord>(key);
       return block ? acc.concat(block) : acc;
     }, [] as BlockRecord[]);
 
@@ -49,18 +57,25 @@ export class BlockHistory {
     blockCount: number,
     lastBlockNumber: BlockNumber,
   ): Promise<BlockRecord[]> {
-    const { reward, oldestBlock, baseFeePerGas } = await this.web3.eth.getFeeHistory(
-      blockCount,
-      lastBlockNumber,
-      PERCENTILES,
-    );
-    return reward
+    const feeHistory = await this.web3.eth.getFeeHistory(blockCount, lastBlockNumber, PERCENTILES);
+    const { oldestBlock, baseFeePerGas } = feeHistory;
+
+    const reward = feeHistory.reward.filter(blockRewards => blockRewards.some(x => !!toNumber(x)));
+    if (reward.length === 0) {
+      throw Error(
+        `[${this.networkID}] getFeeHistory() is not fully supported in ${lastBlockNumber}`,
+      );
+    }
+
+    const result: BlockRecord[] = reward
       .map((blockRewards, index) => ({
         number: toNumber(oldestBlock) + index,
         baseFeePerGas: toNumber(baseFeePerGas[index]),
         rewards: blockRewards.map(toNumber),
       }))
       .filter(value => !this.cache.has(value.number));
+
+    return result;
   }
 
   private async getFeeHistoryFallback(
@@ -79,20 +94,22 @@ export class BlockHistory {
           console.warn('[%s] Skipping block %s: %s', this.networkID, blockNumber, err);
           return null;
         });
-
-        if (block) {
-          result.push({
-            number: block.number,
-            baseFeePerGas: 0,
-            rewards: percentiles(
-              block.transactions.map(tx => toNumber(tx.gasPrice)),
-              PERCENTILES,
-            ),
-          });
-        }
       }
 
-      blockNumber = block ? block.number - 1 : await this.getPreviousBlockNumber(blockNumber);
+      if (block) {
+        result.push({
+          number: block.number,
+          baseFeePerGas: 0,
+          rewards: percentiles(
+            block.transactions.map(tx => toNumber(tx.gasPrice)).filter(gasPrice => !!gasPrice),
+            PERCENTILES,
+          ),
+        });
+        blockNumber = block.number - 1;
+      } else {
+        blockNumber = await this.getPreviousBlockNumber(blockNumber);
+      }
+
       progress += 1;
     }
 
