@@ -98,4 +98,3 @@ type GasParams = Record<
 - baseFeePerGas - baseFeePerGas for the pending block in wei, `undefined` if EIP-1559 not supported;
 - maxPriorityFeePerGas - suggested maxPriorityFeePerGas in wei, `undefined` if EIP-1559 not supported;
 - maxFeePerGas - suggested maxFeePerGas in wei, `undefined` if EIP-1559 not supported. Equals to `2 * baseFeePerGas + maxPriorityFeePerGas`.
-
