@@ -8,6 +8,7 @@ For Akropolis origins, the server can be reached at https://gas-oracle.akropolis
 - Ethereum Mainnet 1
 - BSC Mainnet 56
 - Arbitrum One 42161
+- Polygon 137
 
 ## Installation
 Clone this repo:
