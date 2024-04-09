@@ -8,6 +8,7 @@ export const PERCENTILES_IN_BLOCKS = PERCENTILES.map(percentileToBlocks);
 export const DEFAULT_AVERAGE_BLOCK_TIME = 15000;
 
 export const WHITELISTED_ORIGINS = [
+  'https://www.akro.one',
   'https://www.akropolis.io',
   'https://testnet.akropolis.io',
   /^https:\/\/.+akropolisio\.vercel\.app$/,
